@@ -1,0 +1,97 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9]
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+    
+    - name: Lint with flake8
+      run: |
+        flake8 donor_analytics_enterprise tests
+    
+    - name: Type check with mypy
+      run: |
+        mypy donor_analytics_enterprise
+    
+    - name: Run tests with pytest
+      run: |
+        pytest tests --cov=donor_analytics_enterprise
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+    
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+    
+    - name: Build and push Docker images
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Build and push dashboard image
+        docker build -t $ECR_REGISTRY/donor-analytics-dashboard:$IMAGE_TAG -f docker/Dockerfile.dashboard .
+        docker push $ECR_REGISTRY/donor-analytics-dashboard:$IMAGE_TAG
+        
+        # Build and push ML image
+        docker build -t $ECR_REGISTRY/donor-analytics-ml:$IMAGE_TAG -f docker/Dockerfile.ml .
+        docker push $ECR_REGISTRY/donor-analytics-ml:$IMAGE_TAG
+        
+        # Build and push Airflow image
+        docker build -t $ECR_REGISTRY/donor-analytics-airflow:$IMAGE_TAG -f docker/Dockerfile.airflow .
+        docker push $ECR_REGISTRY/donor-analytics-airflow:$IMAGE_TAG
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+    
+    - name: Update ECS services
+      run: |
+        # Update ECS services with new image versions
+        aws ecs update-service --cluster donor-analytics --service dashboard --force-new-deployment
+        aws ecs update-service --cluster donor-analytics --service ml-training --force-new-deployment
+        aws ecs update-service --cluster donor-analytics --service airflow --force-new-deployment

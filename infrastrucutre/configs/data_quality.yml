@@ -1,0 +1,118 @@
+"""
+Data quality validation rules for donor analytics pipeline
+"""
+tables:
+  donors:
+    - type: not_null
+      column: donor_id
+      threshold: 1.0
+      description: Primary key must not be null
+    
+    - type: unique
+      column: donor_id
+      description: Primary key must be unique
+    
+    - type: format
+      column: email
+      pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+      description: Email must be valid format
+    
+    - type: range
+      column: wealth_index
+      min: 0
+      max: 100
+      description: Wealth index must be between 0-100
+    
+    - type: range
+      column: engagement_index
+      min: 0
+      max: 100
+      description: Engagement index must be between 0-100
+
+  donations:
+    - type: not_null
+      column: donation_id
+      threshold: 1.0
+      description: Primary key must not be null
+    
+    - type: unique
+      column: donation_id
+      description: Primary key must be unique
+    
+    - type: not_null
+      column: donor_id
+      threshold: 1.0
+      description: Donor ID must not be null
+    
+    - type: range
+      column: amount
+      min: 0
+      description: Donation amount must be positive
+    
+    - type: not_null
+      column: donation_date
+      threshold: 0.99
+      description: Donation date should be present (allow 1% missing)
+
+  events:
+    - type: not_null
+      column: event_id
+      threshold: 1.0
+      description: Primary key must not be null
+    
+    - type: unique
+      column: event_id
+      description: Primary key must be unique
+    
+    - type: range
+      column: attendance_hours
+      min: 0
+      max: 24
+      description: Attendance hours must be between 0-24
+
+referential_integrity:
+  - parent_table: donors
+    parent_key: donor_id
+    child_table: donations
+    child_key: donor_id
+    description: All donations must reference valid donors
+
+  - parent_table: donors
+    parent_key: donor_id
+    child_table: events
+    child_key: donor_id
+    description: All event attendees must be valid donors
+
+drift_monitoring:
+  metrics:
+    - name: avg_donation_amount
+      table: donations
+      column: amount
+      aggregation: mean
+      threshold: 0.25  # Alert if 25% change
+    
+    - name: donor_engagement
+      table: events
+      column: attendance_hours
+      aggregation: mean
+      threshold: 0.20  # Alert if 20% change
+    
+    - name: wealth_distribution
+      table: donors
+      column: wealth_index
+      type: distribution
+      test: ks_test
+      p_value_threshold: 0.05
+
+alerts:
+  email:
+    recipients:
+      - data-alerts@ujafed.org
+    severity_levels:
+      - critical
+      - warning
+  
+  slack:
+    channel: '#donor-analytics-alerts'
+    severity_levels:
+      - critical

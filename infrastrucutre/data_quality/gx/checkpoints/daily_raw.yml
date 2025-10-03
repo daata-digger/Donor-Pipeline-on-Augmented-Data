@@ -1,0 +1,28 @@
+name: daily_raw_checkpoint
+config_version: 1.0
+class_name: Checkpoint
+
+validations:
+  - batch_request:
+      datasource_name: donor_data
+      data_asset_name: donors
+      options:
+        path: data/raw/donors.csv
+    expectation_suite_name: donors_suite
+
+  - batch_request:
+      datasource_name: donor_data
+      data_asset_name: donations
+      options:
+        path: data/raw/donations.csv
+    expectation_suite_name: donations_suite
+
+  - batch_request:
+      datasource_name: donor_data
+      data_asset_name: events
+      options:
+        path: data/raw/engagement_events.csv
+    expectation_suite_name: events_suite
+
+evaluation_parameters: {}
+runtime_configuration: {}

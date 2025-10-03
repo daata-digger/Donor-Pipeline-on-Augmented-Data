@@ -1,0 +1,20 @@
+name: donors_suite
+expectations:
+  - expectation_type: expect_column_values_to_not_be_null
+    kwargs:
+      column: donor_id
+  - expectation_type: expect_column_values_to_not_be_null
+    kwargs:
+      column: email
+  - expectation_type: expect_column_values_to_match_regex
+    kwargs:
+      column: email
+      regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+  - expectation_type: expect_column_values_to_be_between
+    kwargs:
+      column: birth_year
+      min_value: 1900
+      max_value: 2010
+  - expectation_type: expect_column_values_to_be_unique
+    kwargs:
+      column: donor_id

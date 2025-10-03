@@ -1,0 +1,23 @@
+# Core requirements
+numpy>=1.23.0,<2.0.0
+pandas>=2.0.0
+streamlit>=1.24.0
+plotly>=5.0.0
+
+# Visualization
+streamlit-folium>=0.11.0
+folium>=0.14.0
+
+# Data warehouse
+snowflake-connector-python
+dbt-core
+dbt-snowflake
+
+# ML & Monitoring
+mlflow
+scikit-learn
+xgboost
+
+# Utils
+python-dotenv
+requests

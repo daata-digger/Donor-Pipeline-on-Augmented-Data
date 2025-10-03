@@ -1,0 +1,60 @@
+name: 'donor_analytics'
+version: '1.0.0'
+config-version: 2
+
+profile: 'snowflake'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+  - "logs"
+
+models:
+  donor_analytics:
+    # Raw layer - minimal transformation
+    raw:
+      +materialized: view
+      +schema: raw
+      
+    # Staging layer - cleaned data
+    stg:
+      +materialized: view
+      +schema: staging
+      
+    # Intermediate layer - business logic
+    int:
+      +materialized: table
+      +schema: intermediate
+      
+    # Mart layer - analytics ready
+    mart:
+      +materialized: table
+      +schema: analytics
+      +persist_docs:
+        relation: true
+        columns: true
+
+vars:
+  # Environment configs  
+  env: 'prod'
+  data_start_date: '2020-01-01'
+  
+  # Business rules
+  min_donation_amount: 5.00
+  high_value_threshold: 10000.00
+  engagement_window_days: 365
+
+tests:
+  +store_failures: true
+  +severity: error
+
+seeds:
+  donor_analytics:
+    +schema: seed

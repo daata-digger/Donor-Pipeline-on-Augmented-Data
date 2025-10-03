@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # Streamlit Dashboard
+  dashboard:
+    build: 
+      context: .
+      dockerfile: docker/Dockerfile.dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      - SNOWFLAKE_ACCOUNT=${SNOWFLAKE_ACCOUNT}
+      - SNOWFLAKE_USER=${SNOWFLAKE_USER}
+      - SNOWFLAKE_PASSWORD=${SNOWFLAKE_PASSWORD}
+    volumes:
+      - ./donor-analytics-enterprise:/app
+    depends_on:
+      - airflow-webserver
+      - snowflake-proxy
+
+  # Airflow Services
+  airflow-webserver:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.airflow
+    ports:
+      - "8080:8080"
+    environment:
+      - AIRFLOW_HOME=/opt/airflow
+    volumes:
+      - ./donor-analytics-enterprise/ingestion_pipeline/airflow:/opt/airflow/dags
+    depends_on:
+      - postgres
+      - redis
+
+  airflow-scheduler:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.airflow
+    command: scheduler
+    volumes:
+      - ./donor-analytics-enterprise/ingestion_pipeline/airflow:/opt/airflow/dags
+    depends_on:
+      - airflow-webserver
+
+  # Database Services
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:6
+
+  # ML Services
+  ml-training:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ml
+    volumes:
+      - ./donor-analytics-enterprise/ml:/app/ml
+      - model_artifacts:/app/models
+
+  # Snowflake Proxy
+  snowflake-proxy:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.snowflake
+    environment:
+      - SNOWFLAKE_ACCOUNT=${SNOWFLAKE_ACCOUNT}
+      - SNOWFLAKE_USER=${SNOWFLAKE_USER}
+      - SNOWFLAKE_PASSWORD=${SNOWFLAKE_PASSWORD}
+    ports:
+      - "8000:8000"
+
+volumes:
+  postgres_data:
+  model_artifacts:
