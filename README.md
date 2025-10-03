@@ -86,8 +86,7 @@ Trend analysis of donations: monthly/daily gift patterns, gift-size distribution
 ![Giving Patterns](docs/images/giving_patterns.png)
 
 ### e. Donor Journey
-Tracks each donor’s lifecycle: first engagement → donation → repeat giving.  
-![Donor Journey](docs/images/donor_journey.png)
+Tracks each donor’s lifecycle: first engagement → donation → repeat giving. 
 
 ---
 
